@@ -16,6 +16,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <random>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -69,5 +70,43 @@ TEST(VectorizedMathTest, TestApplyLinearLossAdjustment) {
     for (std::size_t i = 0; i < v1.size(); i+=2) {
         EXPECT_NEAR(v1[i],   (float)i/(float)v1.size(), 1.0e-6);
         EXPECT_NEAR(v1[i+1], (float)i/(float)v1.size(), 1.0e-6);
+    }
+}
+
+TEST(VectorizedMathTest, TestComplexToFloat1) {
+    aligned::alignedFloatVector v1;
+    constexpr std::size_t size = 1000;
+    const float step{1.0f / size};
+    float current = 0.0;
+    for (std::size_t i = 0; i < size; i++) {
+        v1.emplace_back(static_cast<float>(i));
+        v1.emplace_back(0.0f);
+        current += step;
+    }
+
+    aligned::alignedFloatVector v2;
+    v2.resize(size);
+    vectorized::complexToFloat(v1.data(), v2.data(), size);
+    for (std::size_t i = 0; i < size; i++) {
+        EXPECT_NEAR(v2[i], (float)i, 1.0e-6);
+    }
+}
+
+TEST(VectorizedMathTest, TestComplexToFloat2) {
+    aligned::alignedFloatVector v1;
+    constexpr std::size_t size = 1000;
+    const float step{1.0f / size};
+    float current = 0.0;
+    for (std::size_t i = 0; i < size; i++) {
+        v1.emplace_back(std::sin(current));
+        v1.emplace_back(std::cos(current));
+        current += step;
+    }
+
+    aligned::alignedFloatVector v2;
+    v2.resize(size);
+    vectorized::complexToFloat(v1.data(), v2.data(), size);
+    for (std::size_t i = 0; i < size; i++) {
+        EXPECT_NEAR(v2[i], 1, 1.0e-6);
     }
 }

@@ -30,6 +30,7 @@ namespace{
     const __m256i magic1      ALIGN32_END = _mm256_setr_epi8 (2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13, 18, 19, 16, 17, 22, 23, 20, 21, 26, 27, 24, 25, 30, 31, 28, 29);
     const __m256i magic2      ALIGN32_END = _mm256_setr_epi8 (0, 1, 8, 9, 2, 3, 10, 11, 4, 5, 12, 13, 6, 7, 14, 15, 16, 17, 24, 25, 18, 19, 26, 27, 20, 21, 28, 29, 22, 23, 30, 31);
     const __m256i magic3      ALIGN32_END = _mm256_setr_epi32(0, 4, 1, 5, 2, 6, 3, 7);
+    const __m256i magic4      ALIGN32_END = _mm256_setr_epi32(0, 1, 4, 5, 2, 3, 6, 7);
     const __m256i negateAdd   ALIGN32_END = _mm256_setr_epi16(0x0, 0x0001, 0x0, 0x0001, 0x0, 0x0001, 0x0, 0x0001, 0x0, 0x0001, 0x0, 0x0001, 0x0, 0x0001, 0x0, 0x0001);
     const __m256i negateMask  ALIGN32_END = _mm256_setr_epi16(0x0, iFFFF, 0x0, iFFFF, 0x0, iFFFF, 0x0, iFFFF, 0x0, iFFFF, 0x0, iFFFF, 0x0, iFFFF, 0x0, iFFFF);
     const __m256  negateFloat ALIGN32_END = _mm256_setr_ps   (1, -1, 1, -1, 1, -1, 1, -1);
@@ -137,6 +138,62 @@ void vectorized::floatToShort(const float * __restrict__ in, std::int16_t * __re
         out[i] = (short)in[i];
     }
 
+}
+
+void vectorized::complexToFloat(const float* __restrict__ in, float* __restrict__ out, std::size_t length) {
+    std::size_t i;
+    const std::size_t stop{(length*2) - 32};
+
+    //NOTE: I'm counting over the floats of 'in', not complexes.
+    for(i = 0; i < stop; i += 32) {
+        __m256 v0 = _mm256_load_ps(in + i +  0);
+        __m256 v1 = _mm256_load_ps(in + i +  8);
+        __m256 v2 = _mm256_load_ps(in + i + 16);
+        __m256 v3 = _mm256_load_ps(in + i + 24);
+
+        v0 = _mm256_mul_ps(v0, v0);
+        v1 = _mm256_mul_ps(v1, v1);
+        v2 = _mm256_mul_ps(v2, v2);
+        v3 = _mm256_mul_ps(v3, v3);
+
+        v0 = _mm256_hadd_ps(v0,v1);
+        v2 = _mm256_hadd_ps(v2,v3);
+
+        v0 = _mm256_permutevar8x32_ps(v0, magic4);
+        v2 = _mm256_permutevar8x32_ps(v2, magic4);
+
+        _mm256_store_ps(out + (i>>1) + 0, v0);
+        _mm256_store_ps(out + (i>>1) + 8, v2);
+    }
+    //not I'm back to counting over complexes.  Please forgive my sins.
+    for (i/=2; i < length; i++) {
+        const float& ii = in[i*2];
+        const float& iq = in[i*2 + 1];
+        out[i] = ii*ii + iq*iq;
+    }
+
+    //At this point, I have the square of the magnitude.  I'm going to do the sqrt in a different loop, to try
+    //getting more streaming benefit (12 CPI latency, 6 CPI throughput).
+     const std::size_t stop2{length - 31};
+     for (i = 0; i < stop2; i += 32) {
+         __m256 v0 = _mm256_load_ps(out + i +  0);
+         __m256 v1 = _mm256_load_ps(out + i +  8);
+         __m256 v2 = _mm256_load_ps(out + i + 16);
+         __m256 v3 = _mm256_load_ps(out + i + 24);
+
+         v0 = _mm256_sqrt_ps(v0);
+         v1 = _mm256_sqrt_ps(v1);
+         v2 = _mm256_sqrt_ps(v2);
+         v3 = _mm256_sqrt_ps(v3);
+
+         _mm256_store_ps(out + i +  0, v0);
+         _mm256_store_ps(out + i +  8, v1);
+         _mm256_store_ps(out + i + 16, v2);
+         _mm256_store_ps(out + i + 24, v3);
+     }
+     for (; i < length; i++) {
+         out[i] = std::sqrt(out[i]);
+     }
 }
 
 void vectorized::reverse(const float * __restrict__ in, float * __restrict__ out,  std::size_t length) {
@@ -336,7 +393,9 @@ void vectorized::iqToAmpAndPhase(const float * __restrict__ in, float * __restri
         //TODO -> find a way to make rsqrt work!!!
         tmp2 = _mm256_sqrt_ps(tmp2);          // 0,1,4,5,2,3,6,7
 
-        avx_mathfun::atan2(val0, val1, tmp3); // 0,1,4,5,2,3,6,7
+        //TODO -> this needs tested!
+        // avx_mathfun::atan2(val0, val1, tmp3); // 0,1,4,5,2,3,6,7
+        tmp3 = avx_mathfun::atan2(tmp0, tmp1);
 
         // convert from -pi,+pi to 0,2pi
         tmp3 = _mm256_add_ps(tmp3, tp);
@@ -410,8 +469,8 @@ void vectorized::vectorMultiply(float* __restrict__ io, const float* __restrict_
         real0 = _mm256_hadd_ps(real0, imag0);        //xu-yv xu-yv xv+yu xv+yu (8X32)
         real1 = _mm256_hadd_ps(real1, imag1);        //xu-yv xu-yv xv+yu xv+yu (8X32)
 
-        imag0 = _mm256_permute_ps(real0, 0xD8);      //xu-yv uv+yu xu-yv xv+yu (9X32)
-        imag1 = _mm256_permute_ps(real1, 0xD8);      //xu-yv uv+yu xu-yv xv+yu (9X32)
+        imag0 = _mm256_permute_ps(real0, 0xD8);      //xu-yv xv+yu xu-yv xv+yu (8X32)
+        imag1 = _mm256_permute_ps(real1, 0xD8);      //xu-yv xv+yu xu-yv xv+yu (8X32)
 
         _mm256_store_ps(io + i + 0, imag0);
         _mm256_store_ps(io + i + 8, imag1);

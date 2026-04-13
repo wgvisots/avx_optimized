@@ -46,6 +46,21 @@ void shortToFloat(const std::int16_t* __restrict__ in, float* __restrict__ out, 
 void floatToShort(const float* __restrict__ in, std::int16_t* __restrict__ out, std::size_t length);
 
 /**
+ * Fill each item in 'out' with the magnitude of 'in'.
+ * Please pay particular attention to the parameter descriptions, as they are somewhat inconsistent with the rest of
+ * this namespace.
+ *
+ * NOTE: This wants vectors of at least 64 complexes, and iterates in blocks of 64.  This is to reduct the overhead
+ *       of performing sqrt, by streaming blocks of 4 sqrt calls at a time.
+ *
+ * @param in Input array of 'length' std::complex<float>s, (flattened as an array of floats).
+ * @param out Output array of the magnitude of the corresponding element of 'in'
+ * @param length The number of std::complex<float>s in 'in', and the number of floats in 'out'.  NOTE: This differs from
+ *               most other functions in this namespace.
+ */
+void complexToFloat(const float* __restrict__ in, float* __restrict__ out, std::size_t length);
+
+/**
  * Rewrite the array in the opposite order
  * NOTE: Assumes aligned memory!
  * @param in - an array
