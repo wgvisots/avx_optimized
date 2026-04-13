@@ -1,0 +1,88 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "core",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_CXX_EXTENSIONS": "OFF",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install",
+        "CPACK_PACKAGING_INSTALL_PREFIX": "${sourceDir}/install/avx_mathfun",
+        "CPACK_PACKAGE_RELEASE": "0",
+        "VERSION": "0.1"
+      }
+    },
+    {
+      "name": "debug",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build_debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CPACK_PACKAGING_INSTALL_PREFIX": "${sourceDir}/package_debug"
+      }
+    },
+    {
+      "name": "release",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "rpm",
+      "hidden": true,
+      "cacheVariables": {
+        "CPACK_GENERATOR": "RPM",
+        "CPACK_RPM_PACKAGE_REQUIRES": " ",
+        "CPACK_PACKAGING_INSTALL_PREFIX": "/usr/"
+      }
+    },
+    {
+      "name": "deb",
+      "hidden": true,
+      "cacheVariables": {
+        "CPACK_GENERATOR": "DEB",
+        "CPACK_RPM_PACKAGE_REQUIRES": " ",
+        "CPACK_PACKAGING_INSTALL_PREFIX": "/usr/"
+      }
+    },
+    {
+      "name": "gcc_release_rpm",
+      "displayName": "GCC Release",
+      "description": "Build a release version with GCC",
+      "generator": "Unix Makefiles",
+      "inherits": ["core", "release", "rpm"],
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-march=native -FPIC -fopenmp -pedantic -Wall -Wextra -Wsuggest-override -Wno-comment -Winit-self -O2"
+      }
+    },
+    {
+      "name": "gcc_release_deb",
+      "displayName": "GCC Release",
+      "description": "Build a release version with GCC",
+      "generator": "Unix Makefiles",
+      "inherits": ["core", "release", "deb"],
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-march=native -FPIC -fopenmp -pedantic -Wall -Wextra -Wsuggest-override -Wno-comment -Winit-self -O2"
+      }
+    },
+    {
+      "name": "gcc_debug",
+      "displayName": "GCC Debug",
+      "description": "Build  adebug version with GCC",
+      "generator": "Unix Makefiles",
+      "inherits": ["core", "debug", "rpm"],
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-march=native -FPIC -fopenmp -pedantic -Wall -Wextra -Wsuggest-override -Wno-comment -Winit-self -g -O0 --coverage"
+      }
+    }
+  ]
+}
