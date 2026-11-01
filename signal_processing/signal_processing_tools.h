@@ -18,7 +18,6 @@
 
 #include <cstdint>
 
-
 namespace signal_processing_tools {
 /**
  *
@@ -27,4 +26,4 @@ namespace signal_processing_tools {
  * @param numItems
  */
 void canny1DEmissionDetector(const float* __restrict__ input, float* __restrict__ output, const std::size_t& numItems);
-}
+} // namespace signal_processing_tools

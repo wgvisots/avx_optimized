@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_GENERATOR: Ninja
+  # Intel Software Development Emulator, used to run the tests as other CPUs would.
+  SDE_URL: https://downloadmirror.intel.com/859732/sde-external-9.58.0-2025-06-16-lin.tar.xz
+  SDE_SHA256: f849acecad4c9b108259c643b2688fd65c35723cd23368abe5dd64b917cc18c0
+
+jobs:
+  test:
+    name: test (${{ matrix.preset }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [debug, release, clang-debug, clang-release, sanitize, scalar-only]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        # mathfun is not installed on purpose: this exercises the FetchContent fallback.
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libgtest-dev
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }} -DAVX_OPTIMIZED_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}
+
+  # The hosted runners may or may not have AVX-512, and always have AVX2.  Running the tests under
+  # SDE covers every dispatch level whatever the runner is, and the pre-AVX CPUs also prove that
+  # nothing outside the ISA-specific kernels uses AVX instructions.
+  emulated-cpus:
+    name: emulated CPUs (${{ matrix.build }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [release, debug]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libgtest-dev
+
+      - name: Cache SDE
+        id: cache-sde
+        uses: actions/cache@v4
+        with:
+          path: sde
+          key: sde-${{ env.SDE_SHA256 }}
+
+      - name: Download SDE
+        if: steps.cache-sde.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL -o sde.tar.xz "$SDE_URL"
+          echo "$SDE_SHA256  sde.tar.xz" | sha256sum --check
+          mkdir sde && tar -xJf sde.tar.xz -C sde --strip-components=1
+
+      - name: Build
+        run: |
+          cmake --preset ${{ matrix.build }} -DAVX_OPTIMIZED_WARNINGS_AS_ERRORS=ON
+          cmake --build --preset ${{ matrix.build }}
+
+      - name: Run tests on emulated CPUs
+        run: |
+          set -o pipefail
+          tests=build/${{ matrix.build }}/test/avx_optimized_tests
+          # cpu flag : best ISA the library must detect on that CPU
+          for entry in spr:avx512 icx:avx512 hsw:avx2 snb:scalar mrm:scalar; do
+            cpu=${entry%%:*}; expected=${entry##*:}
+            echo "::group::SDE -$cpu (expect $expected)"
+            ./sde/sde64 -$cpu -- "$tests" --gtest_brief=1 | tee "sde-$cpu.log"
+            grep -q "best supported ISA: $expected," "sde-$cpu.log" || { echo "expected $expected on $cpu"; exit 1; }
+            echo "::endgroup::"
+          done
+
+  package:
+    name: package and downstream use
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Build Debian package
+        run: |
+          cmake --preset package-deb
+          cmake --build --preset package-deb
+          (cd build/package-deb && cpack)
+
+      - name: Install the package and build the example against it
+        run: |
+          sudo apt-get install -y ./build/package-deb/avx_optimized-*.deb
+          cmake -S examples -B build/examples
+          cmake --build build/examples
+          ./build/examples/iq_pipeline
+          AVX_OPTIMIZED_ISA=scalar ./build/examples/iq_pipeline
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debian-package
+          path: build/package-deb/*.deb
+
+  format:
+    name: formatting
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format-18
+
+      - name: Check formatting
+        # To fix locally: clang-format -i $(git ls-files '*.h' '*.cpp')
+        run: clang-format-18 --dry-run --Werror $(git ls-files '*.h' '*.cpp')
+
+  docs:
+    name: API reference
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y ninja-build doxygen
+
+      - name: Build the API reference
+        run: |
+          cmake -S . -B build/docs -DAVX_OPTIMIZED_BUILD_DOCS=ON -DAVX_OPTIMIZED_BUILD_TESTS=OFF
+          cmake --build build/docs --target avx_optimized_docs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-reference
+          path: build/docs/docs/html
