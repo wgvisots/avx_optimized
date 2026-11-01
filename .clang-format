@@ -1,0 +1,87 @@
+# clang-format configuration for avx_optimized (requires clang-format 18 or newer).
+#
+# The goal is code that reads like a table.  Wherever lines are related, their parts line up in
+# columns:
+#   - consecutive declarations:      types in one column, names in the next
+#   - consecutive assignments:       the '=' (and '+=', ...) signs line up
+#   - consecutive macros, trailing comments, short case labels and bit fields line up
+#   - argument and parameter lists that don't fit on one line are broken one per line, each
+#     aligned under the first
+#   - wrapped expressions start each line with the operator, aligned under the operand above
+# Columns make code easier to scan and compare, and easier to read with dyslexia; slightly
+# larger diffs when a column has to move are an accepted cost.
+#
+# A run of lines is aligned only while it is unbroken: a blank line or a comment line starts a new
+# table.  Use that to group related lines.  For hand-made layouts clang-format can't express (for
+# example a matrix of constants), wrap the region in "// clang-format off" / "// clang-format on".
+
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: c++20
+ColumnLimit: 120
+IndentWidth: 4
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+NamespaceIndentation: None
+FixNamespaceComments: true
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+InsertBraces: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+ReflowComments: false   # keep hand-aligned comment tables intact
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+
+# --- Tables -----------------------------------------------------------------------------------
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCompound: true
+  PadOperators: true
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+AlignConsecutiveBitFields:
+  Enabled: true
+AlignConsecutiveShortCaseStatements:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCaseColons: false
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+AlignEscapedNewlines: Left
+AlignArrayOfStructures: Left
+
+# --- One item per line when a list has to wrap --------------------------------------------------
+AlignAfterOpenBracket: Align
+BinPackArguments: false
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BreakConstructorInitializers: BeforeComma
+PackConstructorInitializers: Never
+AlwaysBreakTemplateDeclarations: Yes   # renamed BreakTemplateDeclarations in clang-format 19
+
+# --- Wrapped expressions start with the operator, aligned ---------------------------------------
+BreakBeforeBinaryOperators: NonAssignment
+AlignOperands: AlignAfterOperator
+BreakBeforeTernaryOperators: true
+
+# --- Short constructs ---------------------------------------------------------------------------
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: All
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortEnumsOnASingleLine: false
