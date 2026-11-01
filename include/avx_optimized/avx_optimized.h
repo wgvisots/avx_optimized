@@ -13,3 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  **********************************************************************/
+
+#pragma once
+
+/// Convenience header that pulls in the whole public API.
+
+#include "avx_optimized/aligned.h"
+#include "avx_optimized/complex_fir_filter.h"
+#include "avx_optimized/convolution.h"
+#include "avx_optimized/cpu.h"
+#include "avx_optimized/vectorized.h"
+#include "avx_optimized/version.h"

@@ -1,88 +1,136 @@
 {
   "version": 6,
-  "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 21,
-    "patch": 0
-  },
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
   "configurePresets": [
     {
-      "name": "core",
+      "name": "base",
       "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/install/${presetName}",
       "cacheVariables": {
-        "CMAKE_CXX_STANDARD": "20",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_CXX_EXTENSIONS": "OFF",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install",
-        "CPACK_PACKAGING_INSTALL_PREFIX": "${sourceDir}/install/avx_mathfun",
-        "CPACK_PACKAGE_RELEASE": "0",
-        "VERSION": "0.1"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
+    },
+    {
+      "name": "clang",
+      "hidden": true,
+      "cacheVariables": { "CMAKE_CXX_COMPILER": "clang++" }
     },
     {
       "name": "debug",
-      "hidden": true,
-      "binaryDir": "${sourceDir}/build_debug",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CPACK_PACKAGING_INSTALL_PREFIX": "${sourceDir}/package_debug"
-      }
+      "displayName": "Debug",
+      "description": "Debug build with tests (default compiler)",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
     },
     {
       "name": "release",
+      "displayName": "Release",
+      "description": "Optimized build with tests (default compiler)",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "clang-debug",
+      "displayName": "Clang Debug",
+      "inherits": ["clang", "debug"]
+    },
+    {
+      "name": "clang-release",
+      "displayName": "Clang Release",
+      "inherits": ["clang", "release"]
+    },
+    {
+      "name": "sanitize",
+      "displayName": "Sanitizers",
+      "description": "Debug build with AddressSanitizer and UndefinedBehaviorSanitizer",
+      "inherits": "debug",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address,undefined"
+      }
+    },
+    {
+      "name": "coverage",
+      "displayName": "Coverage",
+      "description": "Debug build instrumented for gcov/lcov",
+      "inherits": "debug",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "--coverage",
+        "CMAKE_EXE_LINKER_FLAGS": "--coverage",
+        "CMAKE_SHARED_LINKER_FLAGS": "--coverage"
+      }
+    },
+    {
+      "name": "scalar-only",
+      "displayName": "Scalar only",
+      "description": "Release build without the AVX2/AVX-512 kernels, as on non-x86 platforms",
+      "inherits": "release",
+      "cacheVariables": { "AVX_OPTIMIZED_X86_KERNELS": "OFF" }
+    },
+    {
+      "name": "benchmark",
+      "displayName": "Benchmark",
+      "description": "Release build of the benchmark program (bench/)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "AVX_OPTIMIZED_BUILD_TESTS": "OFF",
+        "AVX_OPTIMIZED_BUILD_BENCHMARKS": "ON"
+      }
+    },
+    {
+      "name": "package",
       "hidden": true,
-      "binaryDir": "${sourceDir}/build",
+      "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_SHARED_LIBS": "ON",
+        "CMAKE_INSTALL_PREFIX": "/usr",
+        "AVX_OPTIMIZED_BUILD_TESTS": "OFF"
       }
     },
     {
-      "name": "rpm",
-      "hidden": true,
-      "cacheVariables": {
-        "CPACK_GENERATOR": "RPM",
-        "CPACK_RPM_PACKAGE_REQUIRES": " ",
-        "CPACK_PACKAGING_INSTALL_PREFIX": "/usr/"
-      }
+      "name": "package-deb",
+      "displayName": "Debian package",
+      "description": "Shared release build for 'cpack' producing a .deb",
+      "inherits": "package",
+      "cacheVariables": { "CPACK_GENERATOR": "DEB" }
     },
     {
-      "name": "deb",
-      "hidden": true,
-      "cacheVariables": {
-        "CPACK_GENERATOR": "DEB",
-        "CPACK_RPM_PACKAGE_REQUIRES": " ",
-        "CPACK_PACKAGING_INSTALL_PREFIX": "/usr/"
-      }
-    },
-    {
-      "name": "gcc_release_rpm",
-      "displayName": "GCC Release",
-      "description": "Build a release version with GCC",
-      "generator": "Unix Makefiles",
-      "inherits": ["core", "release", "rpm"],
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-march=native -FPIC -fopenmp -pedantic -Wall -Wextra -Wsuggest-override -Wno-comment -Winit-self -O2"
-      }
-    },
-    {
-      "name": "gcc_release_deb",
-      "displayName": "GCC Release",
-      "description": "Build a release version with GCC",
-      "generator": "Unix Makefiles",
-      "inherits": ["core", "release", "deb"],
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-march=native -FPIC -fopenmp -pedantic -Wall -Wextra -Wsuggest-override -Wno-comment -Winit-self -O2"
-      }
-    },
-    {
-      "name": "gcc_debug",
-      "displayName": "GCC Debug",
-      "description": "Build  adebug version with GCC",
-      "generator": "Unix Makefiles",
-      "inherits": ["core", "debug", "rpm"],
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-march=native -FPIC -fopenmp -pedantic -Wall -Wextra -Wsuggest-override -Wno-comment -Winit-self -g -O0 --coverage"
-      }
+      "name": "package-rpm",
+      "displayName": "RPM package",
+      "description": "Shared release build for 'cpack' producing an .rpm",
+      "inherits": "package",
+      "cacheVariables": { "CPACK_GENERATOR": "RPM" }
     }
+  ],
+  "buildPresets": [
+    { "name": "debug", "configurePreset": "debug" },
+    { "name": "release", "configurePreset": "release" },
+    { "name": "clang-debug", "configurePreset": "clang-debug" },
+    { "name": "clang-release", "configurePreset": "clang-release" },
+    { "name": "sanitize", "configurePreset": "sanitize" },
+    { "name": "coverage", "configurePreset": "coverage" },
+    { "name": "scalar-only", "configurePreset": "scalar-only" },
+    { "name": "benchmark", "configurePreset": "benchmark" },
+    { "name": "package-deb", "configurePreset": "package-deb" },
+    { "name": "package-rpm", "configurePreset": "package-rpm" }
+  ],
+  "testPresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "jobs": 8 }
+    },
+    { "name": "debug", "inherits": "base", "configurePreset": "debug" },
+    { "name": "release", "inherits": "base", "configurePreset": "release" },
+    { "name": "clang-debug", "inherits": "base", "configurePreset": "clang-debug" },
+    { "name": "clang-release", "inherits": "base", "configurePreset": "clang-release" },
+    { "name": "sanitize", "inherits": "base", "configurePreset": "sanitize" },
+    { "name": "coverage", "inherits": "base", "configurePreset": "coverage" },
+    { "name": "scalar-only", "inherits": "base", "configurePreset": "scalar-only" }
   ]
 }

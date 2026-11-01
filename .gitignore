@@ -1,45 +1,30 @@
-.idea
-build
-build_debug
+# Build trees and installs (presets use build/<preset> and install/<preset>)
+/build/
+/build_*/
+/install/
+/package_*/
 
-# Prerequisites
-*.d
+# Tooling
+.idea/
+.vscode/
+.cache/
+compile_commands.json
+CMakeUserPresets.json
 
-# Compiled Object files
-*.slo
-*.lo
+# Compiled objects and libraries
 *.o
 *.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Linker files
-*.ilk
-
-# Debugger Files
-*.pdb
-
-# Compiled Dynamic libraries
+*.a
 *.so
+*.so.*
 *.dylib
 *.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
 *.lib
-
-# Executables
 *.exe
 *.out
-*.app
 
-# debug information files
-*.dwo
+# Coverage output
+*.gcda
+*.gcno
+*.gcov
+coverage/
