@@ -26,7 +26,8 @@ include(FetchContent)
 # Pinned mathfun revision used when no installed copy is found.
 set(AVX_OPTIMIZED_MATHFUN_REPOSITORY "https://github.com/wgvisots/avx_mathfun.git"
     CACHE STRING "Git repository to fetch mathfun from")
-set(AVX_OPTIMIZED_MATHFUN_TAG "291a17c2e8d462664107099a36fc4a0a9ad0017e"
+# 5fd19df: AVX2 log/exp special values and subnormals match AVX-512 (avx_mathfun PR #1).
+set(AVX_OPTIMIZED_MATHFUN_TAG "5fd19df4176f34bb772446fc60148b269bc701e4"
     CACHE STRING "mathfun revision to fetch")
 
 if(AVX_OPTIMIZED_X86 AND NOT TARGET mathfun::mathfun)
