@@ -46,6 +46,15 @@ set_tests_properties(avx_optimized_env_isa_warns_on_typo PROPERTIES
                      ENVIRONMENT "AVX_OPTIMIZED_ISA=avx-2"
                      PASS_REGULAR_EXPRESSION "ignoring unrecognised AVX_OPTIMIZED_ISA value 'avx-2'")
 
+# The warning must not pass control characters (such as terminal escape sequences) through, and
+# must cut long values short.
+string(ASCII 27 _escape)
+add_test(NAME avx_optimized_env_isa_warning_is_printable
+         COMMAND avx_optimized_tests --gtest_filter=Cpu.ReportsWhatWasDetected)
+set_tests_properties(avx_optimized_env_isa_warning_is_printable PROPERTIES
+                     ENVIRONMENT "AVX_OPTIMIZED_ISA=avx${_escape}[2Jx0123456789012345678901234567890123456789"
+                     PASS_REGULAR_EXPRESSION "value 'avx\\?\\[2Jx012345678901234567890123\\.\\.\\.'")
+
 # Guards against the multi-versioning ODR trap described in src/kernels.h.
 if(AVX_OPTIMIZED_ISA_KERNEL_TARGETS AND CMAKE_NM)
     set(_objects "")
