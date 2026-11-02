@@ -158,6 +158,9 @@ avx_optimized::magnitude(avx_optimized::asComplex(iqFloats), magnitudes, sampleC
   before anything is written. With pointers, **`count` comes last** and counts elements of the
   pointed-to type: for complex functions it's the number of complex samples, and the I/Q
   conversions count complex samples too.
+- **Pointer forms trust `count`.** They can't know how big your arrays are, so a wrong `count` reads
+  or writes past the end. When a size comes from outside your program (a file header, a network
+  packet, a message from another process), use the span forms, which check it.
 - **Complex data is `std::complex<float>`**, stored as {real, imag}: the same memory as an array of
   interleaved I/Q floats. `asComplex()` and `asFloats()` convert pointers between the two, at no cost.
   The type is only used at the interface. Inside, every kernel works on plain floats.
