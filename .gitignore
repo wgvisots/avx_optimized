@@ -8,6 +8,7 @@
 .idea/
 .vscode/
 .cache/
+.claude/
 compile_commands.json
 CMakeUserPresets.json
 
