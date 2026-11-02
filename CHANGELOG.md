@@ -40,6 +40,12 @@ for how to port code from the old API.
   - Every function is compared with a double-precision reference on every instruction set, for all
     tail lengths, with misaligned buffers and out-of-bounds write detection.
   - CI with sanitizers, emulated CPUs (Intel SDE), packaging, formatting and docs checks.
+- **Security**
+  - SECURITY.md, describing how to report a vulnerability privately.
+  - CI actions are pinned to commit hashes and kept up to date by Dependabot, and the Intel SDE
+    archive's checksum is verified on every run.
+  - An unrecognised `AVX_OPTIMIZED_ISA` value is shown in the warning with non-printable characters
+    replaced and long values cut short, so it can't send escape sequences to the terminal.
 
 ### Fixed
 - Heap buffer overflow in `Convolution::convolve` on every call.

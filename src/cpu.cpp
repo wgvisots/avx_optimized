@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <cctype>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <stdexcept>
@@ -74,6 +75,32 @@ bool parseIsa(const char* text, Isa& isa) noexcept {
     return false;
 }
 
+/// Longest part of an unrecognised AVX_OPTIMIZED_ISA value that the warning shows.
+constexpr std::size_t kMaxShownLength = 32;
+
+/// Text that is safe to print to a terminal, in a fixed-size buffer (dispatch never allocates).
+struct PrintableText {
+    char text[kMaxShownLength + 4]; ///< Up to kMaxShownLength characters, "..." and the terminator.
+};
+
+/// `text` made safe to print: every character outside printable ASCII becomes '?', so a value
+/// can't send escape sequences to the terminal, and a value longer than kMaxShownLength is cut
+/// short and ends in "...".
+PrintableText printable(const char* text) noexcept {
+    PrintableText result{};
+    std::size_t   length = 0;
+    for (; text[length] != '\0' && length < kMaxShownLength; ++length) {
+        const unsigned char c = static_cast<unsigned char>(text[length]);
+        result.text[length]   = (c >= 0x20 && c < 0x7F) ? static_cast<char>(c) : '?';
+    }
+    if (text[length] != '\0') {
+        result.text[length]     = '.';
+        result.text[length + 1] = '.';
+        result.text[length + 2] = '.';
+    }
+    return result;
+}
+
 /// The best supported ISA, capped by the AVX_OPTIMIZED_ISA environment variable if it is set.
 Isa computeInitialIsa() noexcept {
     Isa         isa       = bestSupportedIsa();
@@ -87,7 +114,7 @@ Isa computeInitialIsa() noexcept {
         std::fprintf(stderr,
                      "avx_optimized: ignoring unrecognised AVX_OPTIMIZED_ISA value '%s' "
                      "(expected scalar, avx2 or avx512); using %s\n",
-                     requested,
+                     printable(requested).text,
                      isaName(isa));
         return isa;
     }
